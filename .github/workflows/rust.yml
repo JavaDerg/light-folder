@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Dependencies
-      run: ./install_dependencies.sh
+      run: sudo ./install_dependencies.sh
     - name: Build
       run: cargo build --verbose
     - name: Run tests
