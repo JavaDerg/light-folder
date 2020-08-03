@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 saphir = { version = "2.7", features = ["json", "form"] }
-opencv = { version = "0.44", features = ["buildtime-bindgen"] }
+opencv = { version = "0.44", default-featuresa = false, features = ["buildtime-bindgen"] }
 tokio = { version = "0.2", features = ["macros"] }
 log = "0.4"
 env_logger = "0.7"
@@ -21,3 +21,9 @@ num_cpus = "1.13"
 percent-encoding = "2.1"
 qstring = "0.7"
 thread-id = "3.3"
+
+[features]
+default = ["opencv-4"]
+opencv-4 = ["opencv/opencv-4"]
+opencv-34 = ["opencv/opencv-34"]
+opencv-32 = ["opencv/opencv-32"]
