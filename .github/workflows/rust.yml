@@ -19,6 +19,6 @@ jobs:
     - name: Install Dependencies
       run: sudo ./install_dependencies.sh
     - name: Build
-      run: cargo build --verbose --features "opencv-32"
+      run: cargo build --verbose --features "opencv-32" --no-default-features
     - name: Run tests
-      run: cargo test --verbose --features "opencv-32"
+      run: cargo test --verbose --features "opencv-32" --no-default-features
