@@ -1,0 +1,22 @@
+[package]
+name = "light-folder"
+version = "0.0.0"
+authors = ["post-rex <post-rex@pm.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+saphir = { version = "2.7", features = ["json", "form"] }
+opencv = "0.44"
+tokio = { version = "0.2", features = ["macros"] }
+log = "0.4"
+env_logger = "0.7"
+isahc = "0.9"
+lazy_static = "1.4"
+threadpool = "1.8"
+select = "0.5"
+crossbeam-deque = "0.7"
+num_cpus = "1.13"
+percent-encoding = "2.1"
+qstring = "0.7"
