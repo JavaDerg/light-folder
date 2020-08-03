@@ -18,25 +18,53 @@ pub fn start() {
     debug!("Found usable {} threads", *CPU_THREADS);
 
     for _ in 0..*CPU_THREADS {
-        std::thread::spawn(|| {
-            debug!("Spawned thread");
-            let worker = Worker::<WorkUnit>::new_fifo();
-            loop {
-                // WORKER_QUEUE.steal_batch(&worker);
-                if let Some(work) = worker.pop().or_else(|| {
-                    if let Steal::Success(work) = WORK_QUEUE.steal_batch_and_pop(&worker) {
-                        Some(work)
-                    } else {
-                        None
-                    }
-                }) {
-                    do_work(work);
-                } else {
-                    std::thread::yield_now()
-                }
-            }
-        });
+        std::thread::spawn(|| new_thread(false));
     }
+}
+
+struct ThreadMonitor(pub usize);
+
+impl ThreadMonitor {
+    pub fn exit(&self) {
+        debug!("@{} Exiting thread", self.0)
+    }
+}
+
+impl Drop for ThreadMonitor {
+    fn drop(&mut self) {
+        use std::thread;
+
+        if thread::panicking() {
+            error!("@{} Thread panic in ImagePool, trying to recover", self.0);
+            thread::spawn(|| new_thread(true));
+        }
+    }
+}
+
+fn new_thread(from_panic: bool) {
+    let monitor = ThreadMonitor(thread_id::get());
+
+    debug!("@{} Spawned thread", monitor.0);
+
+    if from_panic {
+        warn!("@{} Spawned recovery thread", monitor.0);
+    }
+
+    let worker = Worker::<WorkUnit>::new_fifo();
+    loop {
+        if let Some(work) = worker.pop().or_else(|| {
+            if let Steal::Success(work) = WORK_QUEUE.steal_batch_and_pop(&worker) {
+                Some(work)
+            } else {
+                None
+            }
+        }) {
+            do_work(work);
+        } else {
+            std::thread::yield_now()
+        }
+    }
+    monitor.exit();
 }
 
 fn do_work(work: WorkUnit) {
@@ -109,8 +137,8 @@ fn resize_image_sync(
 ) -> Result<Vec<u8>> {
     use opencv::imgproc::{resize, InterpolationFlags};
 
-    let img = load_image(&image_data).map_err(|err| err.message)?;
-    let isize = img.size().map_err(|err| err.message)?;
+    let img = load_image(&image_data).map_err(|err| ImageError::ImageLoadingError(err.message))?;
+    let isize = img.size().map_err(|err| ImageError::GeneralImageError(err.message))?;
     if !verify_and_adjust_scale(
         isize.width as u32,
         isize.height as u32,
@@ -124,19 +152,19 @@ fn resize_image_sync(
         return Ok(write_image(&img, target)?);
     }
 
+    let size = Size::new(width as i32, height as i32);
     let mut buf = unsafe {
         Mat::new_size(
-            Size::new(width as i32, height as i32),
-            img.typ().map_err(|err| err.message)?,
+            size,
+            img.typ().map_err(|err| ImageError::GeneralImageError(err.message))?,
         )
     }
-    .map_err(|err| err.message)?;
+    .map_err(|err| ImageError::ImageCreationError(err.message))?;
 
-    let size = buf.size().map_err(|err| err.message)?;
     resize(&img, &mut buf, size, 0.0, 0.0, unsafe {
         std::mem::transmute(InterpolationFlags::INTER_AREA)
     })
-    .map_err(|err| err.message)?;
+    .map_err(|err| ImageError::ImageResizingError(err.message))?;
 
     Ok(write_image(&buf, target)?)
 }
@@ -154,10 +182,10 @@ fn write_image(mat: &Mat, target: ImageTarget) -> Result<Vec<u8>> {
             v.push(100i32);
             v
         })
-        .map_err(|err| Error::ImageEncodingError(err.message))?;
+        .map_err(|err| ImageError::ImageEncodingError(err.message))?;
     } else {
         imencode(target.ext(), mat, &mut out_vec, &Vector::<i32>::new())
-            .map_err(|err| Error::ImageEncodingError(err.message))?;
+            .map_err(|err| ImageError::ImageEncodingError(err.message))?;
     }
 
     Ok(out_vec.to_vec())
@@ -174,7 +202,6 @@ fn load_image(image_data: &VectorOfu8) -> opencv::Result<Mat> {
 }
 
 fn verify_and_adjust_scale(ox: u32, oy: u32, tx: &mut u32, ty: &mut u32) -> bool {
-    println!("{} {} {} {}", ox, oy, *tx, *ty);
     if *tx > ox || *ty > oy {
         return false;
     }
