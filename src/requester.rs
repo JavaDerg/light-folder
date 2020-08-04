@@ -1,9 +1,6 @@
 use crate::img::ImageTarget;
-use isahc::prelude::*;
 use isahc::{get_async, head_async};
 use lazy_static::lazy_static;
-use std::error::Error;
-use std::fmt::{Debug, Display};
 use std::io::Read;
 
 lazy_static! {}

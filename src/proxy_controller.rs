@@ -7,7 +7,7 @@ pub struct ProxyController {
 }
 
 impl ProxyController {
-    pub fn new<S: Into<String>>(label: S) -> Self {
+    pub fn new() -> Self {
         Self {
             _health: AtomicU8::new(0),
         }

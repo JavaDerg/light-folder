@@ -4,19 +4,19 @@ mod img;
 mod proxy_controller;
 mod requester;
 
-pub use log::{ info, warn, error, debug, trace };
+pub use log::{debug, error, info, trace, warn};
 
 use crate::proxy_controller::ProxyController;
 
-pub use error::*;
 use env_logger::Env;
+pub use error::*;
 use saphir::server::Server;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ! {
     env_logger::from_env(Env::default().default_filter_or("warn")).init();
 
-    img::start();
+    img::start_worker_threads();
 
     info!("Starting server");
     let server = Server::builder()
@@ -29,17 +29,33 @@ async fn main() {
             }
             l
         })
-        .configure_router(|r| r.controller(ProxyController::new("proxy")))
+        .configure_router(|r| r.controller(ProxyController::new()))
         .build();
 
+    tokio::spawn(run_server(server));
+
+    if let Ok(_) = tokio::signal::ctrl_c().await {
+        info!("Received ^C");
+    }
+    shutdown(0)
+}
+
+async fn run_server(server: Server) {
     if let Err(err) = server.run().await.map_err(|err| Error::SaphirError(err)) {
         crash(err)
     }
 }
 
+fn shutdown(code: i32) -> ! {
+    warn!("Shutting down server");
+    img::shutdown();
+
+    info!("Have a nice day!");
+    std::process::exit(code)
+}
+
 fn crash<S: ToString>(reason: S) -> ! {
     error!("{}", reason.to_string());
-    warn!("Exiting");
 
-    std::process::exit(1)
+    shutdown(1)
 }

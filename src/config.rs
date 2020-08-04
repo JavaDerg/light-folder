@@ -18,8 +18,8 @@ fn get_cpu_threads() -> usize {
             (&n).parse().unwrap_or_else(|_| {
                 super::crash(format!(
                     "Expected number on environment variable 'LF_IMAGE_THREADS', found '{}'",
-                    &n)
-                )
+                    &n
+                ))
             })
         })
         .unwrap_or_else(|_| num_cpus::get())

@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     OneshotReceiveError,
     SaphirError(saphir::error::SaphirError),
-    ImageError(ImageError)
+    ImageError(ImageError),
 }
 
 #[derive(Debug)]
